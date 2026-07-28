@@ -7,9 +7,16 @@ a self-hosted vLLM/LM Studio instance, or an OpenAI-compatible cloud provider
 local-vs-cloud decision becomes a matter of configuration, not code.
 """
 
+import logging
+import re
+
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
 
 from app.core.config import Settings
+
+logger = logging.getLogger(__name__)
+
+_THINK_BLOCK = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 
 
 class LLMUnavailableError(RuntimeError):
@@ -26,16 +33,23 @@ class LLMClient:
         self._model = settings.llm_model
         self._temperature = settings.llm_temperature
         self._max_tokens = settings.llm_max_tokens
+        self._reasoning_format = settings.llm_reasoning_format
 
     async def get_chat_completion(self, messages: list[dict[str, str]]) -> str:
+        extra_body = {}
+        if self._reasoning_format:
+            extra_body["reasoning_format"] = self._reasoning_format
+
         try:
             completion = await self._client.chat.completions.create(
                 model=self._model,
                 messages=messages,
                 temperature=self._temperature,
                 max_tokens=self._max_tokens,
+                extra_body=extra_body,
             )
         except (APIConnectionError, APITimeoutError, APIStatusError) as exc:
+            logger.error("Falha ao chamar o LLM (%s): %s", type(exc).__name__, exc)
             raise LLMUnavailableError(
                 "Não foi possível falar com o modelo de linguagem no momento."
             ) from exc
@@ -43,4 +57,8 @@ class LLMClient:
         content = completion.choices[0].message.content
         if not content:
             raise LLMUnavailableError("O modelo retornou uma resposta vazia.")
-        return content
+
+        # Safety net: some reasoning models emit <think>...</think> inline in
+        # `content` regardless of provider settings — strip it defensively
+        # rather than trust every provider/model to honor reasoning_format.
+        return _THINK_BLOCK.sub("", content).strip()

@@ -89,6 +89,22 @@ funciona com:
 Trocar de local para nuvem é uma mudança de 3 variáveis de ambiente (`LLM_BASE_URL`,
 `LLM_API_KEY`, `LLM_MODEL`), sem tocar em código.
 
+**Modelos de raciocínio (ex.: `qwen/qwen3.6-27b` na Groq).** Esses modelos geram um
+bloco `<think>...</think>` de raciocínio interno antes da resposta final. Se não tratado,
+esse bloco vaza para o campo `response`, quebrando a persona e consumindo boa parte do
+orçamento de `LLM_MAX_TOKENS`. O `LLMClient` resolve isso em duas camadas: (1) envia
+`reasoning_format` (configurável via `LLM_REASONING_FORMAT`, ex. `hidden`) como parâmetro
+específico do provedor via `extra_body`, sem tocar na interface genérica; (2) como rede de
+segurança, sempre remove qualquer bloco `<think>...</think>` que ainda apareça em
+`content`, caso o provedor/modelo não honre o parâmetro. Fica vazio (sem efeito) para
+provedores que não usam esse conceito.
+
+**Formatação.** O system prompt instrui o modelo a sempre responder em Markdown
+(negrito em nomes/termos técnicos, listas para múltiplos pontos, títulos só em respostas
+longas) — o campo `response` continua sendo texto/Markdown puro; quem consome a API
+(frontend, app) é responsável por renderizar isso com uma lib de Markdown (ex.:
+`react-markdown`, `markdown-it`), como é padrão em APIs de chat com LLM.
+
 ## Escolha do modelo de linguagem
 
 | Modelo | Licença | pt-BR / en | Fine-tuning | Execução local |

@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 1600
     request_timeout_seconds: float = 60.0
 
+    # Only some providers/models support this (e.g. Groq's reasoning models).
+    # Left unset by default so the request stays generic for providers that
+    # don't recognize the field. Set to "hidden" to drop chain-of-thought
+    # and return only the final answer.
+    llm_reasoning_format: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

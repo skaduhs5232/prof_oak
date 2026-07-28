@@ -5,7 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api.routes import chat, health
+from app.api.routes import admin, chat, health, history
 from app.models.chat import SupportedLanguage
 
 
@@ -21,6 +21,8 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(chat.router)
+    app.include_router(history.router)
+    app.include_router(admin.router)
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(

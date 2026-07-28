@@ -18,11 +18,28 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 1600
     request_timeout_seconds: float = 60.0
 
-    # Only some providers/models support this (e.g. Groq's reasoning models).
-    # Left unset by default so the request stays generic for providers that
-    # don't recognize the field. Set to "hidden" to drop chain-of-thought
-    # and return only the final answer.
+    # Total estimated-token budget for ONE request (system prompt + injected
+    # competitive stats + conversation history + current message + the
+    # reserved llm_max_tokens output) — history is trimmed, oldest turns
+    # first, to stay under this. Default leaves a safety margin under the
+    # 8000 TPM Groq free-tier ceiling noted in .env.example for
+    # qwen/qwen3.6-27b; lower it for stricter tiers, raise it for looser ones.
+    llm_context_token_budget: int = 7500
+
+    # Formato de saída para modelos de raciocínio (ex: "hidden" para ocultar o raciocínio).
     llm_reasoning_format: str | None = None
+
+    firebase_credentials_path: str = "./firebase-credentials.json"
+    firebase_credentials_json: str | None = None
+
+   
+    competitive_formats: str = "gen9ou,gen9vgc2026regi"
+   
+    cron_secret: str | None = None
+
+    @property
+    def competitive_formats_list(self) -> list[str]:
+        return [f.strip() for f in self.competitive_formats.split(",") if f.strip()]
 
 
 @lru_cache
